@@ -23,15 +23,3 @@ data "aws_ami" "amazon_linux" {
     values = ["hvm"]
   }
 }
-
-variable "project" {
-  default = "lab-fiap"
-}
-
-variable "nomeGrupo" {
-  default = "teste"
-}
-
-variable "env" {
-  default = "prod"
-}
