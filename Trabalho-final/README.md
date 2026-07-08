@@ -30,11 +30,11 @@ Este é o **Trabalho Final** da disciplina. Ele consolida tudo que você pratico
 >
 > Se o primeiro retornar o JSON com seu `Account`/`Arn` e o segundo mostrar `Terraform v1.10` ou superior, você está pronto.
 >
-> **Tempo estimado total: 4 a 6 horas** (execução pura ~1h30 + tempo para escrever o `DECISION.md`, depurar o pipeline, observar os jobs no GitLab e validar `dev`/`prod`). Recomendamos dividir em duas sessões.
+> **Tempo estimado total: 3 a 5 horas** (execução pura ~1h30 + tempo para depurar o pipeline, observar os jobs no GitLab e validar `dev`/`prod`). Recomendamos dividir em duas sessões.
 
 ## Objetivo
 
-Provar — com um artefato funcional e um `DECISION.md` — que a infraestrutura da Vortex é **código versionado, reproduzível e validado automaticamente**: um `push` valida, barra o inseguro e provisiona tudo sozinho.
+Provar — com um artefato funcional — que a infraestrutura da Vortex é **código versionado, reproduzível e validado automaticamente**: um `push` valida, barra o inseguro e provisiona tudo sozinho.
 
 ## O que você vai entregar
 
@@ -44,10 +44,9 @@ Ao final, você terá um **repositório GitLab** que:
 - nomeia os recursos por **workspace/ambiente** (ex: `nginx-prod-002`, `alb-dev`, `vortex-sg-prod`);
 - guarda o **estado remoto no S3**, permitindo trabalho em time sem corromper o `terraform.tfstate`;
 - separa **dev** e **prod** em workspaces distintos;
-- roda um **pipeline de 3 etapas** (validar → revisar/gate de segurança → aplicar) no seu GitLab Runner;
-- vem acompanhado de um **`DECISION.md`** (ADR) que justifica as escolhas técnicas para Helena.
+- roda um **pipeline de 3 etapas** (validar → revisar/gate de segurança → aplicar) no seu GitLab Runner.
 
-A **entrega** (Parte 5) é um `.zip` com esse código Terraform, o `DECISION.md` e alguns **prints que provam que o pipeline rodou** (o código já é a prova do resto).
+A **entrega** (Parte 4) é um `.zip` com esse código Terraform e alguns **prints que provam que o pipeline rodou** (o código já é a prova do resto).
 
 > [!TIP]
 > Sempre que encontrar um bloco com o título **💡 Clique para entender**, abra-o. Ele traz a anatomia do requisito, o porquê da escolha e links oficiais. Não é obrigatório para concluir, mas aprofunda.
@@ -60,8 +59,7 @@ A **entrega** (Parte 5) é um `.zip` com esse código Terraform, o `DECISION.md`
 | [Parte 1](#parte-1---modularizar-a-demo-count) | Modularizar a demo Count | [1](#req-1) · [2](#req-2) | ~60 min |
 | [Parte 2](#parte-2---estado-remoto-e-ambientes-devprod) | Estado remoto e ambientes dev/prod | [3](#req-3) · [4](#req-4) · [5](#req-5) · [6](#req-6) | ~60 min |
 | [Parte 3](#parte-3---pipeline-de-cicd-end-to-end) | Pipeline de CI/CD end-to-end | [7](#req-7) · [8](#req-8) | ~90 min |
-| [Parte 4](#parte-4---documento-de-decisão-adr) | Documento de decisão (ADR) | [9](#req-9) | ~45 min |
-| [Parte 5](#parte-5---empacotar-e-submeter) | Empacotar e submeter | [10](#req-10) | ~15 min |
+| [Parte 4](#parte-4---empacotar-e-submeter) | Empacotar e submeter | [9](#req-9) | ~15 min |
 
 > [!TIP]
 > Se travou em algum requisito, clique no número na coluna **Requisitos** acima para ir direto.
@@ -409,7 +407,7 @@ aplicar:
 
 **Por que o gate vem antes do apply:** validar e revisar são baratos; aplicar cria recursos reais. Rodar o Checkov antes deixa a análise de segurança visível (aba **Tests**) **antes** de qualquer mudança chegar à nuvem — "falhe cedo, falhe pequeno".
 
-**Reportar vs. barrar:** como no [Lab 03.2](../03-CICD/02-Validando-e-gerando-relatorios/README.md), usamos `|| true` para o Checkov **reportar sem abortar** o job — a infra da demo Count tem findings genéricos (SG aberto na 80, sem criptografia) que são **esperados**. Transformar o gate em bloqueio de verdade (remover o `|| true`, ou barrar só findings críticos) é uma **decisão sua** — registre-a no `DECISION.md`.
+**Reportar vs. barrar:** como no [Lab 03.2](../03-CICD/02-Validando-e-gerando-relatorios/README.md), usamos `|| true` para o Checkov **reportar sem abortar** o job — a infra da demo Count tem findings genéricos (SG aberto na 80, sem criptografia) que são **esperados**. Transformar o gate em bloqueio de verdade (remover o `|| true`, ou barrar só findings críticos) é uma **decisão sua**.
 
 **Workspace no CI:** este é o ponto de integração novo (workspaces do [Lab 01.5](../01-Terraform/demos/05-Workspaces/README.md) dentro do pipeline do Módulo 03). O `terraform workspace select "$WORKSPACE" || terraform workspace new "$WORKSPACE"` garante que o `plan`/`apply` rodem no ambiente certo. Como cada stage roda num job separado, o `select` é repetido no `aplicar`.
 
@@ -429,7 +427,7 @@ O job está esperando um Runner. Verifique em **Settings → CI/CD → Runners**
 </blockquote>
 </details>
 
-Quando o pipeline terminar, é aqui que você tira **os prints que vão na entrega** (Parte 5) — eles são a prova de que o CI/CD rodou de verdade:
+Quando o pipeline terminar, é aqui que você tira **os prints que vão na entrega** (Parte 4) — eles são a prova de que o CI/CD rodou de verdade:
 
 > 📸 **Print obrigatório** — salve como `prints/01-pipeline-verde.png`. Capture a página do pipeline no GitLab com os **3 stages verdes** (`validar → revisar → aplicar`), rodando no seu runner.
 
@@ -447,39 +445,17 @@ Quando o pipeline terminar, é aqui que você tira **os prints que vão na entre
 
 ---
 
-## Parte 4 - Documento de decisão (ADR)
+## Parte 4 - Empacotar e submeter
 
 ### Resultado esperado desta parte
 
-Um `DECISION.md` que justifica, em linguagem de negócio, as escolhas técnicas para Helena.
+Um `.zip` com **todo o Terraform que você desenvolveu** (do jeito que você organizou) + os **prints que provam que o pipeline rodou**, mais o link do repositório GitLab.
 
 ---
 
 <a id="req-9"></a>
 
-**Requisito 9.** Copie o arquivo [`DECISION_TEMPLATE.md`](./DECISION_TEMPLATE.md) para `DECISION.md` na raiz do seu projeto e preencha-o. Ele deve registrar: o contexto da demanda da Helena, a decisão de design do módulo, a estratégia de state, o desenho do pipeline, as alternativas descartadas e as consequências.
-
-> [!NOTE]
-> Em entrevistas técnicas seniores, **escrever sobre a decisão** é tão valorizado quanto escrever o código. Um ADR mostra maturidade: você documenta não só o que fez, mas o porquê e o que descartou.
-
-### Checkpoint
-
-- [ ] `DECISION.md` existe e está preenchido (sem campos `_____` em branco).
-- [ ] Há ao menos uma alternativa descartada com justificativa.
-
----
-
-## Parte 5 - Empacotar e submeter
-
-### Resultado esperado desta parte
-
-Um `.zip` com **todo o Terraform que você desenvolveu** (do jeito que você organizou) + o `DECISION.md` + os **prints que provam que o pipeline rodou**, mais o link do repositório GitLab.
-
----
-
-<a id="req-10"></a>
-
-**Requisito 10.** A entrega é **código + prints**. O **código** que você escreveu já é a prova do que você fez (módulo, workspaces, backend) — por isso **não pedimos print do código**. O que o código *não* mostra é que o **pipeline rodou de verdade na nuvem** — e é isso que os prints provam.
+**Requisito 9.** A entrega é **código + prints**. O **código** que você escreveu já é a prova do que você fez (módulo, workspaces, backend) — por isso **não pedimos print do código**. O que o código *não* mostra é que o **pipeline rodou de verdade na nuvem** — e é isso que os prints provam.
 
 #### O que entra no zip
 
@@ -491,7 +467,6 @@ trabalho-final/
 ├── backend.tf              # state remoto no S3
 ├── versions.tf
 ├── .gitlab-ci.yml          # pipeline de 3 stages
-├── DECISION.md             # seu ADR preenchido
 ├── modules/
 │   └── web-cluster/        # o modulo que voce criou a partir da demo Count
 │       ├── main.tf · variables.tf · data.tf · outputs.tf · script.sh
@@ -524,11 +499,11 @@ zip -r trabalho-final-<SEU-RM>.zip . \
 
 No painel de arquivos do Codespaces, clique com o botão direito em `trabalho-final-<SEU-RM>.zip` → **Download**.
 
-**Parte B — na sua máquina:** descompacte o zip baixado, crie uma pasta `prints/` dentro dele, mova para lá os **3 prints** e recompacte. O `trabalho-final-<SEU-RM>.zip` final (código + `DECISION.md` + `prints/`) é o que você entrega.
+**Parte B — na sua máquina:** descompacte o zip baixado, crie uma pasta `prints/` dentro dele, mova para lá os **3 prints** e recompacte. O `trabalho-final-<SEU-RM>.zip` final (código + `prints/`) é o que você entrega.
 
 #### Submissão
 
-- [ ] `trabalho-final-<SEU-RM>.zip` (código + `.gitlab-ci.yml` + `DECISION.md` + `prints/`)
+- [ ] `trabalho-final-<SEU-RM>.zip` (código + `.gitlab-ci.yml` + `prints/`)
 - [ ] **Link do repositório GitLab** (cole no campo de texto da entrega)
 - [ ] Os **3 prints** dentro de `prints/`
 
@@ -550,7 +525,7 @@ Envie no canal indicado pelo professor (portal da FIAP / comunicado da turma).
 
 ### Checkpoint
 
-- [ ] O `.zip` tem o código Terraform completo (módulo + raiz + `.gitlab-ci.yml` + `DECISION.md`), sem `.terraform/` nem `.tfstate`.
+- [ ] O `.zip` tem o código Terraform completo (módulo + raiz + `.gitlab-ci.yml`), sem `.terraform/` nem `.tfstate`.
 - [ ] A pasta `prints/` tem os 3 prints (pipeline verde, aba Tests/Checkov, API no ar).
 - [ ] A submissão inclui o link do GitLab.
 - [ ] A infraestrutura do trabalho foi destruída nos dois ambientes **e** o runner da Parte 0 também.
@@ -564,8 +539,7 @@ Se você chegou até aqui, então construiu — em um único projeto — a respo
 - modularizou a demo Count em um módulo parametrizável;
 - moveu o state para o S3, viabilizando trabalho em time;
 - separou `dev` e `prod` com recursos nomeados por workspace;
-- montou um pipeline de 3 etapas que valida, barra o inseguro e aplica — tudo no seu Runner;
-- documentou a decisão em um ADR.
+- montou um pipeline de 3 etapas que valida, barra o inseguro e aplica — tudo no seu Runner.
 
 **Mensagem para Helena**: *"A infraestrutura da Vortex hoje é código versionado. Um `push` na branch principal valida, revisa e provisiona tudo do zero — de forma confiável e auditável. A resposta para o board é: não são mais dias na mão, é um push."*
 
@@ -593,8 +567,7 @@ Se você chegou até aqui, então construiu — em um único projeto — a respo
 | **Security Group** | Firewall virtual da AWS que controla o tráfego de entrada/saída de uma instância. |
 | **Pipeline (CI/CD)** | Sequência de etapas automatizadas (stages/jobs) executadas pelo GitLab a cada push. |
 | **GitLab Runner** | Agente que executa os jobs do pipeline. Aqui é o Runner próprio provisionado no Módulo 02 com Ansible. |
-| **Gate de segurança** | Etapa que roda a análise de segurança (Checkov) antes do apply e publica o relatório. Neste trabalho ela **reporta** os findings sem abortar o pipeline (`\|\| true`, como no Lab 03.2); transformá-la em bloqueio de verdade é uma decisão que você registra no `DECISION.md`. |
-| **ADR** | Architecture Decision Record — documento curto que registra uma escolha técnica: contexto, decisão, alternativas, consequências. |
+| **Gate de segurança** | Etapa que roda a análise de segurança (Checkov) antes do apply e publica o relatório. Neste trabalho ela **reporta** os findings sem abortar o pipeline (`\|\| true`, como no Lab 03.2); transformá-la em bloqueio de verdade é uma decisão sua. |
 | **Artefato (CI/CD)** | Arquivo produzido por um job (ex: `plan.tfplan`, relatório) e disponibilizado para download no pipeline. |
 
 </blockquote>
