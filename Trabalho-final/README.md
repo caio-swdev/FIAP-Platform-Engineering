@@ -124,16 +124,9 @@ Seu **runner próprio** de pé e **online** no GitLab, pronto para rodar o pipel
 
 <a id="prep-3"></a>
 
-**Passo 0.3.** No **terminal do Codespaces**, guarde o token no **SSM Parameter Store** (o script e o playbook leem dele — nada de segredo em arquivo). Troque `COLE-SEU-TOKEN-AQUI` pelo token do passo 0.2:
+**Passo 0.3.** No **terminal do Codespaces**, guarde o token no **SSM Parameter Store**, no parâmetro **`/fiap/gitlab-runner/token`** (é dele que o script e o playbook leem — nada de segredo em arquivo). **Você já fez exatamente isso no Módulo 02**, ao registrar o seu runner.
 
-```bash
-aws ssm put-parameter \
-  --name "/fiap/gitlab-runner/token" \
-  --type SecureString \
-  --value "COLE-SEU-TOKEN-AQUI" \
-  --region us-east-1 \
-  --overwrite
-```
+> 📚 O comando para gravar o token como `SecureString` no SSM está na **[Parte 5 do Módulo 02](../02-Ansible/01-provisionando-gitlab-runner/README.md#parte-5---gerando-o-token-do-runner-e-guardando-no-ssm)** (passo 16) — use o mesmo, só com o token novo (passo 0.2) e o parâmetro `/fiap/gitlab-runner/token`.
 
 ---
 
