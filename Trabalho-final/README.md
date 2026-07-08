@@ -55,7 +55,7 @@ A **entrega** (Parte 4) é um `.zip` com esse código Terraform e alguns **print
 
 | Parte | O que você faz | Requisitos | Tempo |
 |-------|----------------|------------|-------|
-| [Parte 0](#parte-0---preparação-provisionamento-entregue) | Preparação: projeto GitLab + runner (script pronto) | [P1](#prep-1) · [P2](#prep-2) · [P3](#prep-3) · [P4](#prep-4) | ~20 min |
+| [Parte 0](#parte-0---preparação-provisionamento-entregue) | Preparação: repositório + chave SSH + runner (script pronto) | [P1](#prep-1) · [P2](#prep-2) · [P3](#prep-3) · [P4](#prep-4) · [P5](#prep-5) | ~20 min |
 | [Parte 1](#parte-1---modularizar-a-demo-count) | Modularizar a demo Count | [1](#req-1) · [2](#req-2) | ~60 min |
 | [Parte 2](#parte-2---estado-remoto-e-ambientes-devprod) | Estado remoto e ambientes dev/prod | [3](#req-3) · [4](#req-4) · [5](#req-5) · [6](#req-6) | ~60 min |
 | [Parte 3](#parte-3---pipeline-de-cicd-end-to-end) | Pipeline de CI/CD end-to-end | [7](#req-7) · [8](#req-8) | ~90 min |
@@ -101,36 +101,84 @@ Quando o trabalho estiver concluído, é isto que estará no ar: um `git push` q
 
 ### Resultado esperado desta parte
 
-Seu **runner próprio** de pé e **online** no GitLab, pronto para rodar o pipeline — sem você configurar servidor na mão. Esta parte **não é o foco do trabalho** (subir o runner você já aprendeu no Módulo 02); por isso ela é a mais automatizada possível: você cria o projeto, gera o token e roda **um script** que provisiona tudo.
+Seu **runner próprio** de pé e **online** no GitLab, pronto para rodar o pipeline — sem você configurar servidor na mão. Esta parte **não é o foco do trabalho** (subir o runner você já aprendeu no Módulo 02); por isso ela é a mais automatizada possível: você cria o repositório, garante sua chave SSH, gera o token do runner e roda **um script** que provisiona tudo.
 
 > [!NOTE]
 > O que **vale nota** no Trabalho Final é o **código** que você escreve a partir da Parte 1 (o módulo Terraform, os workspaces e o `.gitlab-ci.yml`). O provisionamento do runner é só o palco — deixamos pronto de propósito para você gastar seu tempo no que importa.
+
+> [!IMPORTANT]
+> **Como o pipeline se autentica na AWS (autorização do CI/CD):** ao contrário do CI/CD "de mercado", você **não** vai cadastrar `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` como *CI/CD Variables* no GitLab. O pipeline roda **no seu runner**, que é uma EC2 com o **`LabRole`** anexado (instance profile). O `terraform` do pipeline herda essa permissão automaticamente — **nenhum segredo da AWS entra no GitLab**. É por isso que basta o runner estar online: ele já está autorizado a criar a infra.
 
 ---
 
 <a id="prep-1"></a>
 
-**Passo 0.1.** No **GitLab**, crie um **projeto novo** para este trabalho (ex: `trabalho-final`). Guarde a URL SSH dele — você vai usá-la na Parte 3 para dar `push` no código.
+**Passo 0.1.** No **GitLab**, crie o repositório do trabalho: acesse **[Novo projeto](https://gitlab.com/projects/new)** → **Create blank project**, nomeie **`trabalho-final`**, deixe **Public** e **desmarque** "Initialize repository with a README". Ao criar, **guarde a URL SSH** do projeto (`git@gitlab.com:<seu-usuario>/trabalho-final.git`) — você a usa no `git push` da Parte 3.
+
+<details>
+<summary><b>💡 Não lembra onde clicar?</b></summary>
+<blockquote>
+
+É o mesmo passo a passo que você fez ao criar o `primeiro-projeto` no **[Módulo 02 — Parte 4](../02-Ansible/01-provisionando-gitlab-runner/README.md#parte-4---criando-o-primeiro-projeto-no-gitlab)**. A única diferença é o nome do projeto (`trabalho-final`). A URL SSH aparece no botão azul **Code → Clone with SSH** da página do projeto.
+
+</blockquote>
+</details>
 
 ---
 
 <a id="prep-2"></a>
 
-**Passo 0.2.** Ainda no GitLab, em **Settings → CI/CD → Runners**, clique em **Create project runner**, marque as tags `shell` e `terraform` e **copie o token** (`glrt-...`). É o mesmo fluxo do [Módulo 02](../02-Ansible/01-provisionando-gitlab-runner/README.md#parte-5---gerando-o-token-do-runner-e-guardando-no-ssm) — como o projeto é novo, o token também é novo.
+**Passo 0.2.** O `git push` para o GitLab usa uma **chave SSH sua**. **Se você abriu um Codespaces novo, a chave do Módulo 02 sumiu** — então garanta a chave agora. No **terminal do Codespaces**:
+
+```bash
+# Se o .pub existir, a chave já está aqui — pule para o passo 0.3.
+# Se NÃO existir (Codespaces novo), o comando abaixo cria a chave:
+ls /home/vscode/.ssh/gitlab.pub 2>/dev/null || ssh-keygen -t rsa -b 2048 -C "gitlab key" -f /home/vscode/.ssh/gitlab -N ""
+
+# Carrega a chave na sessão e mostra a parte pública para você copiar:
+eval "$(ssh-agent -s)" && ssh-add /home/vscode/.ssh/gitlab
+cat /home/vscode/.ssh/gitlab.pub
+```
+
+Copie a saída do `cat` e cole em **[Chaves SSH do GitLab](https://gitlab.com/-/user_settings/ssh_keys)** → **Add new key** (se ela já estava lá de antes, pode pular).
+
+<details>
+<summary><b>💡 Detalhes do fluxo de chave SSH</b></summary>
+<blockquote>
+
+É exatamente o que você fez no **[Módulo 02 — Parte 3](../02-Ansible/01-provisionando-gitlab-runner/README.md#parte-3---configurando-o-acesso-ao-gitlab)** (passo 5). Lembre que o `ssh-agent` vive **por sessão de terminal**: se abrir um terminal novo, rode de novo `eval "$(ssh-agent -s)" && ssh-add /home/vscode/.ssh/gitlab`. Se o `git push` reclamar `Permission denied (publickey)`, é porque a chave não está carregada nesta sessão ou não foi colada no GitLab.
+
+</blockquote>
+</details>
 
 ---
 
 <a id="prep-3"></a>
 
-**Passo 0.3.** No **terminal do Codespaces**, guarde o token no **SSM Parameter Store**, no parâmetro **`/fiap/gitlab-runner/token`** (é dele que o script e o playbook leem — nada de segredo em arquivo). **Você já fez exatamente isso no Módulo 02**, ao registrar o seu runner.
+**Passo 0.3.** Ainda no GitLab, no projeto `trabalho-final`, vá em **Settings → CI/CD → Runners → Create project runner**, marque as **tags `shell` e `terraform`** e **copie o token** (`glrt-...`). É o mesmo fluxo do [Módulo 02](../02-Ansible/01-provisionando-gitlab-runner/README.md#parte-5---gerando-o-token-do-runner-e-guardando-no-ssm) — como o projeto é novo, o token também é novo.
 
-> 📚 O comando para gravar o token como `SecureString` no SSM está na **[Parte 5 do Módulo 02](../02-Ansible/01-provisionando-gitlab-runner/README.md#parte-5---gerando-o-token-do-runner-e-guardando-no-ssm)** (passo 16) — use o mesmo, só com o token novo (passo 0.2) e o parâmetro `/fiap/gitlab-runner/token`.
+<details>
+<summary><b>💡 Por que tags `shell` e `terraform`?</b></summary>
+<blockquote>
+
+O `.gitlab-ci.yml` que você vai escrever roteia os jobs com `tags: [shell]`. O runner precisa ter essa tag para pegar os jobs — por isso a marcamos aqui, na criação. É o mesmo par de tags do runner do Módulo 02.
+
+</blockquote>
+</details>
 
 ---
 
 <a id="prep-4"></a>
 
-**Passo 0.4.** Rode o script de provisionamento. Ele instala o tooling, sobe a EC2 do runner e a configura via Ansible — **tudo em um comando** (leva ~5 min):
+**Passo 0.4.** No **terminal do Codespaces**, guarde o token no **SSM Parameter Store**, no parâmetro **`/fiap/gitlab-runner/token`** (é dele que o script e o playbook leem — nada de segredo em arquivo). **Você já fez exatamente isso no Módulo 02**, ao registrar o seu runner.
+
+> 📚 O comando para gravar o token como `SecureString` no SSM está na **[Parte 5 do Módulo 02](../02-Ansible/01-provisionando-gitlab-runner/README.md#parte-5---gerando-o-token-do-runner-e-guardando-no-ssm)** (passo 16) — use o mesmo, só com o token novo (passo 0.3) e o parâmetro `/fiap/gitlab-runner/token`.
+
+---
+
+<a id="prep-5"></a>
+
+**Passo 0.5.** Rode o script de provisionamento. Ele instala o tooling, sobe a EC2 do runner e a configura via Ansible — **tudo em um comando** (leva ~5 min):
 
 ```bash
 bash /workspaces/FIAP-Platform-Engineering/Trabalho-final/provisionamento/subir-runner.sh
@@ -155,7 +203,7 @@ O runner roda numa EC2 com o `LabRole` (instance profile), então o `terraform` 
 <summary><b>⚠ Se der erro: <code>token nao encontrado</code> ou <code>bucket base-config-* nao encontrado</code></b></summary>
 <blockquote>
 
-- **Token**: refaça o passo 0.3 (o `put-parameter`). Confira com `aws ssm get-parameter --name /fiap/gitlab-runner/token --with-decryption --region us-east-1 --query 'Parameter.Value' --output text`.
+- **Token**: refaça o passo 0.4 (o `put-parameter`). Confira com `aws ssm get-parameter --name /fiap/gitlab-runner/token --with-decryption --region us-east-1 --query 'Parameter.Value' --output text`.
 - **Bucket**: o script procura um bucket começando com `base-config`. Confirme que o bucket do setup (Módulo 01) existe: `aws s3 ls | grep base-config`.
 
 </blockquote>
@@ -163,7 +211,8 @@ O runner roda numa EC2 com o `LabRole` (instance profile), então o `terraform` 
 
 ### Checkpoint
 
-- [ ] O projeto do trabalho existe no seu GitLab.
+- [ ] O repositório `trabalho-final` existe no seu GitLab e você tem a URL SSH dele.
+- [ ] Sua chave SSH está carregada na sessão e cadastrada no GitLab (o `git push` da Parte 3 depende disso).
 - [ ] O token do runner está no SSM (`/fiap/gitlab-runner/token`).
 - [ ] O script terminou e o runner aparece **online** em Settings → CI/CD → Runners.
 
