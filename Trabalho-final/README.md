@@ -322,23 +322,53 @@ Documentação oficial:
 
 No **arquivo raiz** (na pasta do trabalho, fora de `modules/`) você chama o módulo, diz quantos nós ele deve criar e reexpõe o DNS do ALB. Faça, nesta ordem:
 
+<dl>
+<dt>
+
 **2.1. Declare o `provider "aws"` no raiz**
+
+</dt>
+<dd>
 
 Com `region = "us-east-1"` (as variáveis da demo foram para o módulo, então fixe a região aqui). O provider fica no raiz, nunca no módulo; o `backend` você adiciona no Requisito 3, também no raiz.
 
+</dd>
+<dt>
+
 **2.2. Chame o módulo**
+
+</dt>
+<dd>
 
 Use um bloco `module`, apontando `source` para a pasta do módulo (`./modules/web-cluster`).
 
+</dd>
+<dt>
+
 **2.3. Passe o `node_count` derivado do workspace**
+
+</dt>
+<dd>
 
 Use uma expressão condicional sobre `terraform.workspace` (`dev` = 1, `prod` = 3). Assim o pipeline não precisa de `-var` nem `tfvars` — basta selecionar o workspace.
 
+</dd>
+<dt>
+
 **2.4. Reexponha o DNS do ALB como `output` do raiz**
+
+</dt>
+<dd>
 
 Num arquivo **`outputs.tf` na raiz do projeto** (fora de `modules/`), crie um `output` — também chamado **`alb_dns`** — que devolve o output do módulo: `module.<nome_do_modulo>.alb_dns`. É esse `alb_dns` do raiz que o `terraform output -raw alb_dns` lê nos testes da Parte 3 e 4.
 
-**2.5. Valide a sintaxe localmente** (sem precisar de credenciais):
+</dd>
+<dt>
+
+**2.5. Valide a sintaxe localmente** (sem precisar de credenciais)
+
+</dt>
+<dd>
 
 ```bash
 cd /workspaces/FIAP-Platform-Engineering/Trabalho-final
@@ -346,6 +376,9 @@ terraform init -backend=false
 terraform fmt -check
 terraform validate
 ```
+
+</dd>
+</dl>
 
 > 📚 Chamar um módulo, passar variável e expor `output`: demo **[01.2 - Modules](../01-Terraform/demos/02-Modules/README.md)**. A condicional com `terraform.workspace`: demo **[01.5 - Workspaces](../01-Terraform/demos/05-Workspaces/README.md)**.
 
@@ -380,7 +413,13 @@ O state vive no S3 e existem dois ambientes (`dev` e `prod`) com recursos nomead
 
 O `terraform.tfstate` sai da sua máquina e passa a viver no S3, para o pipeline e o time compartilharem o mesmo estado. Faça, nesta ordem:
 
+<dl>
+<dt>
+
 **3.1. Adicione o bloco `backend "s3"` no arquivo raiz**
+
+</dt>
+<dd>
 
 Com estes três valores:
 
@@ -388,9 +427,18 @@ Com estes três valores:
 - **key**: exatamente **`trabalho-final/terraform.tfstate`**;
 - **region**: `us-east-1`.
 
+</dd>
+<dt>
+
 **3.2. Rode `terraform init`**
 
+</dt>
+<dd>
+
 Ele migra o state para o S3.
+
+</dd>
+</dl>
 
 > 📚 O bloco `backend "s3"` e o `terraform init` migrando o state estão na demo **[01.4 - State](../01-Terraform/demos/04-State/README.md)** — use-a como referência para escrever o seu.
 
@@ -418,9 +466,18 @@ Depois rode `terraform init` novamente — ele migra o state para o S3.
 
 **Requisito 4 — Nomear as máquinas por workspace**
 
+<dl>
+<dt>
+
 **4.1. Concatene o workspace no nome das máquinas**
 
+</dt>
+<dd>
+
 Na tag `Name` das `aws_instance` (dentro do módulo), inclua **`${terraform.workspace}`**. O resultado deve ficar assim: `nginx-prod-002`, `nginx-dev-001` (o `count.index` que gera o `002` já vem da demo Count).
+
+</dd>
+</dl>
 
 > 📚 O padrão de concatenar `${terraform.workspace}` no nome do recurso está na demo **[01.5 - Workspaces](../01-Terraform/demos/05-Workspaces/README.md)**.
 
@@ -430,9 +487,18 @@ Na tag `Name` das `aws_instance` (dentro do módulo), inclua **`${terraform.work
 
 **Requisito 5 — Nomear ALB, Target Group e Security Group por workspace**
 
+<dl>
+<dt>
+
 **5.1. Concatene o workspace no nome do ALB, do Target Group e do Security Group**
 
+</dt>
+<dd>
+
 Inclua `${terraform.workspace}` no nome do **ALB** (`aws_lb`), do **Target Group** (`aws_lb_target_group`) e do **Security Group** do módulo — ex: `alb-prod`, `tg-prod`, `vortex-sg-prod`.
+
+</dd>
+</dl>
 
 > [!NOTE]
 > O nome de um `aws_lb` (ALB) e de um `aws_lb_target_group` aceita no máximo 32 caracteres e só letras, números e hífens. Mantenha curto: `alb-${terraform.workspace}` e `tg-${terraform.workspace}` são suficientes.
@@ -446,7 +512,13 @@ Inclua `${terraform.workspace}` no nome do **ALB** (`aws_lb`), do **Target Group
 
 **Requisito 6 — Criar os ambientes dev e prod (workspaces)**
 
+<dl>
+<dt>
+
 **6.1. Crie os dois workspaces e liste para conferir**
+
+</dt>
+<dd>
 
 ```bash
 cd /workspaces/FIAP-Platform-Engineering/Trabalho-final
@@ -455,9 +527,18 @@ terraform workspace new prod
 terraform workspace list
 ```
 
+</dd>
+<dt>
+
 **6.2. Confirme que os ambientes se diferenciam de verdade**
 
+</dt>
+<dd>
+
 `dev` = 1 nó, `prod` = 3. Você **não** precisa configurar nada novo aqui: essa diferença já vem da condicional sobre `terraform.workspace` que você escreveu no arquivo raiz (Requisito 2, passo 2.3). Basta selecionar o workspace (`terraform workspace select prod`) e aplicar — nada de `-var` ou `tfvars`.
+
+</dd>
+</dl>
 
 > 📚 A demo **[01.5 - Workspaces](../01-Terraform/demos/05-Workspaces/README.md)** mostra `terraform workspace new/select/list` e como um mesmo código gera ambientes isolados.
 
@@ -485,7 +566,13 @@ Um repositório no GitLab roda um pipeline de 3 etapas no seu Runner próprio, d
 
 **Requisito 7 — Escrever o pipeline de 3 etapas**
 
+<dl>
+<dt>
+
 **7.1. Crie o arquivo `.gitlab-ci.yml` na raiz do projeto**
+
+</dt>
+<dd>
 
 Ele terá **3 stages** que rodam no seu runner próprio (Parte 0) e provisionam **um** ambiente (o do workspace escolhido — no exemplo, `prod`):
 
@@ -540,6 +627,9 @@ aplicar:
   tags: [shell]
 ```
 
+</dd>
+</dl>
+
 > [!NOTE]
 > O `source /opt/venv/bin/activate` funciona porque o **runner que você provisionou na Parte 0 já vem com o Checkov instalado** nesse venv (o playbook do Módulo 02 o instala em `/opt/venv`). Você não precisa instalar nada — só ativar o ambiente antes de chamar o `checkov`, como no [Lab 03.2](../03-CICD/02-Validando-e-gerando-relatorios/README.md).
 
@@ -566,9 +656,18 @@ Documentação oficial:
 
 **Requisito 8 — Subir o código e disparar o pipeline**
 
+<dl>
+<dt>
+
 **8.1. Suba só o código do trabalho para o projeto da Parte 0**
 
+</dt>
+<dd>
+
 Envie **somente** o módulo + o arquivo raiz + o `.gitlab-ci.yml` (que você escreveu no Requisito 7) para o **projeto que você criou na Parte 0** (passo 0.1). O `push` na branch principal **dispara o pipeline** automaticamente, no **runner que você provisionou na Parte 0** — igual ao [Módulo 03](../03-CICD/01-Primeiro-pipeline/README.md).
+
+</dd>
+</dl>
 
 > [!IMPORTANT]
 > Confirme que o runner da Parte 0 está **online** em Settings → CI/CD → Runners. Como ele roda numa EC2 com o `LabRole`, o `terraform` no pipeline já tem acesso à AWS — sem `AWS_ACCESS_KEY_ID`/`SECRET` no repositório. Isso também evita o problema das credenciais do Academy, que são temporárias e expiram.
@@ -648,7 +747,13 @@ Você **não desenvolve nada de CI/CD além do `.gitlab-ci.yml`**, mas precisa *
 
 Suas coisas ficam em **dois lugares**: o **código** está no Codespaces (nuvem); os **prints** são `.png` na **sua máquina** (você os salvou com print de tela). Por isso:
 
+<dl>
+<dt>
+
 **9.1. No Codespaces, empacote só o código**
+
+</dt>
+<dd>
 
 Sem os artefatos pesados/locais (`.terraform/`, state, `build/`, `plan.tfplan`):
 
@@ -661,19 +766,37 @@ zip -r trabalho-final-<SEU-RM>.zip . \
 
 No painel de arquivos do Codespaces, clique com o botão direito em `trabalho-final-<SEU-RM>.zip` → **Download**.
 
+</dd>
+<dt>
+
 **9.2. Na sua máquina, junte os prints e recompacte**
+
+</dt>
+<dd>
 
 Descompacte o zip baixado, crie uma pasta `prints/` dentro dele, mova para lá os **3 prints** e recompacte. O `trabalho-final-<SEU-RM>.zip` final (código + `prints/`) é o que você entrega.
 
+</dd>
+</dl>
+
 #### Submissão
 
+<dl>
+<dt>
+
 **9.3. Envie no canal indicado pelo professor**
+
+</dt>
+<dd>
 
 (Portal da FIAP / comunicado da turma), com:
 
 - [ ] `trabalho-final-<SEU-RM>.zip` (código + `.gitlab-ci.yml` + `prints/`)
 - [ ] **Link do repositório GitLab** (cole no campo de texto da entrega)
 - [ ] Os **3 prints** dentro de `prints/`
+
+</dd>
+</dl>
 
 > [!CAUTION]
 > **Destrua a infraestrutura ao terminar** — este é o fim do arco, então derrube **tudo**: a infra do trabalho (EC2 + ALB em `dev` e `prod`) **e** o runner da Parte 0. Deixar ligado consome o orçamento do Learner Lab. Como a entrega é código + prints, **nada se perde** ao destruir.
